@@ -1,1 +1,2 @@
-.env_*
+.env*
+promptsail/data

@@ -1,0 +1,70 @@
+version: "3.8"
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/mongo:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+  mongoexperss:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    environment: 
+      ME_CONFIG_MONGODB_URL: "mongodb://root:password@mongodb:27017"
+      ME_CONFIG_OPTIONS_EDITORTHEME: "ambiance"
+      ME_CONFIG_BASICAUTH_USERNAME: "admin" 
+      ME_CONFIG_BASICAUTH_PASSWORD: "pass"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    
+  promptsail-backend:
+    image: ghcr.io/promptsail/promptsail-backend:${PROMPTSAIL_TAG:-latest}
+    container_name: promptsail-backend
+    ports:
+      - "8000:8000"
+    environment:
+      BASE_URL: "http://localhost:8000"
+      STATIC_DIRECTORY: "/static"
+      MONGO_URL: "mongodb://root:password@mongodb:27017"
+      ORGANIZATION_NAME: "Explore LLM Tools"
+      SSO_AUTH: "False"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+  promptsail-ui:
+    image: ghcr.io/promptsail/promptsail-ui:${PROMPTSAIL_TAG:-latest}
+    container_name: promptsail-ui
+    ports:
+      - "80:80"
+    environment:
+      # vite has a problem with env variables, they are hardcoded after 'npm build' so at runtime we search through the files and replace them, see ui/.env.production and ui/deployment/docker_env_replacement.sh scritp
+      # https://dev.to/sanjayttg/dynamic-environment-variables-for-dockerized-react-apps-5bc5
+      # https://github.com/vitejs/vite/issues/10059
+      PORT: 80
+      PROMPT_SAIL_ENV_PLACEHOLDER_BACKEND_URL: 'http://promptsail-backend:8000'
+      PROMPT_SAIL_ENV_PLACEHOLDER_PROXY_URL_HOST: 'http://localhost:8000'
+      PROMPT_SAIL_ENV_PLACEHOLDER_SSO_GOOGLE_CLIENT_ID: 'change_me_compose.apps.googleusercontent.com'
+      PROMPT_SAIL_ENV_PLACEHOLDER_SSO_AZURE_CLIENT_ID: '6fe*******aaa'
+      PROMPT_SAIL_ENV_PLACEHOLDER_SSO_AZURE_TENANT: '4a1******aaa'
+      PROMPT_SAIL_ENV_PLACEHOLDER_SSO_AZURE_SCOPES: 'user.read'
+      PROMPT_SAIL_ENV_PLACEHOLDER_SSO_AZURE_AUTHORITY: 'https://login.microsoftonline.com/4a1*****aaa'
+    depends_on:
+        mongodb:
+            condition: service_started
+        promptsail-backend:
+            condition: service_started
+networks:
+  internal-network:
+    internal: true
+  external-network:
