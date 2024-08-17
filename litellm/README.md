@@ -1,4 +1,4 @@
-# LiteLLM
+# [LiteLLM](https://docs.litellm.ai/docs/)
 
 Run LiteLLM locally to explore its functionality.
 
