@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    env_file:
+      - .env_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  litellm-database:
+    image: ghcr.io/berriai/litellm-database:main-latest
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml
+    env_file:
+      - .env_app
+    depends_on:
+      - postgres
+    command:
+      - --config
+      - /app/config.yaml
+      - --detailed_debug
+
+volumes:
+  postgres_data:
